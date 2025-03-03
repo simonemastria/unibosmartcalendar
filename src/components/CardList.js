@@ -88,7 +88,7 @@ const EventCard = ({ event }) => {
                   href={event.teams} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  style={{ color: '#0078d4', textDecoration: 'none' }}
+                  style={{ color: '#ac3931', textDecoration: 'none' }}
                 >
                   Join Teams Meeting
                 </a>
@@ -124,7 +124,7 @@ const CardList = ({ events }) => {
         .map(([date, dayEvents]) => (
           <Box key={date} sx={{ mb: 4 }}>
             <Typography variant="h4" gutterBottom sx={{ 
-              borderBottom: '2px solid #1976d2',
+              borderBottom: '2px solid #ac3931',
               pb: 1,
               mb: 3
             }}>

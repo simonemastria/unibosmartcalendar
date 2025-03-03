@@ -81,7 +81,7 @@ const CalendarView = ({ events }) => {
   const eventStyleGetter = (event) => {
     return {
       style: {
-        backgroundColor: '#1976d2',
+        backgroundColor: '#ac3931',
         borderRadius: '4px',
         border: 'none',
         color: 'white',

@@ -24,7 +24,7 @@ import './App.css';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1976d2',
+      main: '#ac3931',
     },
     background: {
       default: '#f5f5f5',
@@ -35,10 +35,10 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           '&.Mui-selected': {
-            backgroundColor: '#1976d2',
+            backgroundColor: '#ac3931',
             color: '#fff',
             '&:hover': {
-              backgroundColor: '#1565c0',
+              backgroundColor: '#8e2e28',
               color: '#fff',
             },
           },

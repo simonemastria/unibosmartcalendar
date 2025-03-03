@@ -86,7 +86,7 @@ const EventList = ({ events }) => {
                         href={event.teams}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ color: '#0078d4', textDecoration: 'none' }}
+                        style={{ color: '#ac3931', textDecoration: 'none' }}
                       >
                         Join Teams Meeting
                       </a>
