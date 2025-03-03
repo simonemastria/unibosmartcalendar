@@ -26,11 +26,25 @@ const Settings = () => {
   const [success, setSuccess] = useState('');
   const [timetableUrls, setTimetableUrls] = useState(() => {
     const saved = localStorage.getItem('timetableUrls');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    
+    // Migrate existing data to include fullProgramName if missing
+    const parsedData = JSON.parse(saved);
+    return parsedData.map(timetable => {
+      if (timetable.fullProgramName) return timetable;
+      
+      // Extract program name from the timetable name
+      const nameParts = timetable.name.split(' - ');
+      return {
+        ...timetable,
+        fullProgramName: nameParts[0]
+      };
+    });
   });
   
-  // Add state for editing program years
+  // Add state for editing program years and names
   const [editingProgramYears, setEditingProgramYears] = useState(null);
+  const [editingProgramName, setEditingProgramName] = useState('');
   const [programYears, setProgramYears] = useState(() => {
     const saved = localStorage.getItem('programYears');
     return saved ? JSON.parse(saved) : {};
@@ -208,19 +222,74 @@ const Settings = () => {
     });
   };
   
-  const handleEditYears = (program) => {
-    setEditingProgramYears(program);
+  const handleEditYears = (timetable) => {
+    const fullName = timetable.fullProgramName || timetable.name.split(' - ')[0];
+    setEditingProgramYears({
+      name: timetable.name,
+      fullProgramName: fullName,
+      index: timetableUrls.findIndex(t => t.name === timetable.name)
+    });
+    setEditingProgramName(fullName);
   };
   
-  const handleSaveYears = (program, years) => {
+  const handleSaveYears = (programInfo, years) => {
+    const programKey = programInfo.name;
     const updatedYears = {
       ...programYears,
-      [program]: parseInt(years, 10)
+      [programKey]: parseInt(years, 10)
     };
     localStorage.setItem('programYears', JSON.stringify(updatedYears));
     setProgramYears(updatedYears);
     setEditingProgramYears(null);
+    setEditingProgramName('');
     setSuccess('Program years updated successfully');
+  };
+  
+  const handleSaveProgram = () => {
+    if (!editingProgramYears) return;
+    
+    const index = editingProgramYears.index;
+    if (index === -1) return;
+    
+    // Get the original timetable
+    const originalTimetable = timetableUrls[index];
+    
+    // Extract the year and curriculum part from the original name
+    const nameParts = originalTimetable.name.split(' - ');
+    const yearAndCurriculum = nameParts.slice(1).join(' - ');
+    
+    // Create updated timetable with new program name
+    const updatedTimetable = {
+      ...originalTimetable,
+      name: `${editingProgramName} - ${yearAndCurriculum}`,
+      fullProgramName: editingProgramName
+    };
+    
+    // Update the timetable in the list
+    const updatedTimetables = [...timetableUrls];
+    updatedTimetables[index] = updatedTimetable;
+    
+    // Save to localStorage
+    localStorage.setItem('timetableUrls', JSON.stringify(updatedTimetables));
+    setTimetableUrls(updatedTimetables);
+    
+    // Update the program years key if needed
+    if (originalTimetable.name in programYears) {
+      const updatedYears = { ...programYears };
+      updatedYears[updatedTimetable.name] = updatedYears[originalTimetable.name];
+      delete updatedYears[originalTimetable.name];
+      localStorage.setItem('programYears', JSON.stringify(updatedYears));
+      setProgramYears(updatedYears);
+    }
+    
+    // Update the editing state to reflect the new name
+    setEditingProgramYears({
+      ...editingProgramYears,
+      name: updatedTimetable.name,
+      fullProgramName: editingProgramName
+    });
+    
+    setSuccess('Program name updated successfully');
   };
 
   const handleCourseSelection = (year, curriculum) => {
@@ -235,10 +304,11 @@ const Settings = () => {
       const finalUrl = createJsonUrl(pendingUrl, year, curriculum);
       
       const newTimetable = {
-        name: `${degreeName} - Year ${year}`,
+        name: `${degreeName} - Year ${year}${curriculum ? ` - ${curriculum}` : ''}`,
         url: finalUrl,
         programType: pendingProgramInfo.type,
-        maxYears: pendingProgramInfo.maxYears
+        maxYears: pendingProgramInfo.maxYears,
+        fullProgramName: degreeName
       };
 
       setTimetableUrls(prev => {
@@ -309,8 +379,21 @@ const Settings = () => {
           {timetableUrls.map((timetable, index) => (
             <ListItem key={index} divider={index < timetableUrls.length - 1}>
               <ListItemText
-                primary={timetable.name}
-                secondary={timetable.url}
+                primary={
+                  <Typography variant="subtitle1" fontWeight="medium">
+                    {timetable.fullProgramName || timetable.name.split(' - ')[0]}
+                  </Typography>
+                }
+                secondary={
+                  <>
+                    <Typography variant="body2" component="span">
+                      {timetable.name.includes('Year') ? `Year ${timetable.name.split('Year ')[1]}` : ''}
+                    </Typography>
+                    <Typography variant="caption" display="block" color="text.secondary">
+                      {timetable.url}
+                    </Typography>
+                  </>
+                }
               />
               <ListItemSecondaryAction>
                 <IconButton
@@ -323,7 +406,7 @@ const Settings = () => {
                 <IconButton
                   edge="end"
                   aria-label="edit"
-                  onClick={() => handleEditYears(timetable.name)}
+                  onClick={() => handleEditYears(timetable)}
                 >
                   Edit Years
                 </IconButton>
@@ -336,16 +419,67 @@ const Settings = () => {
       {editingProgramYears && (
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>
-            Edit Program Years
+            Edit Program Information
+          </Typography>
+          
+          <Typography variant="subtitle2" gutterBottom>
+            Program Name
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Program Name"
+              value={editingProgramName}
+              onChange={(e) => setEditingProgramName(e.target.value)}
+              placeholder="Enter the degree program name"
+              helperText="Edit the name of the degree program"
+            />
+            <Button 
+              variant="outlined" 
+              color="primary"
+              onClick={handleSaveProgram}
+              disabled={!editingProgramName.trim()}
+            >
+              Update Name
+            </Button>
+          </Box>
+          
+          <Typography variant="subtitle2" gutterBottom>
+            Program Years
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             <TextField
               fullWidth
-              label="Program Years"
-              value={programYears[editingProgramYears]}
-              onChange={(e) => handleSaveYears(editingProgramYears, e.target.value)}
+              label="Number of Years"
+              type="number"
+              inputProps={{ min: 1, max: 5 }}
+              value={programYears[editingProgramYears.name] || ''}
+              onChange={(e) => setProgramYears({
+                ...programYears,
+                [editingProgramYears.name]: parseInt(e.target.value, 10)
+              })}
               placeholder="Enter the number of years for this program"
+              helperText="This affects which years are shown in the year filter"
             />
+          </Box>
+          
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+            <Button 
+              onClick={() => {
+                setEditingProgramYears(null);
+                setEditingProgramName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="contained" 
+              color="primary" 
+              sx={{ ml: 1 }}
+              onClick={() => handleSaveYears(editingProgramYears, programYears[editingProgramYears.name] || 1)}
+            >
+              Save Years
+            </Button>
           </Box>
         </Paper>
       )}

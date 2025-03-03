@@ -10,6 +10,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import SchoolIcon from '@mui/icons-material/School';
 import { format } from 'date-fns';
+import { formatEventTitle } from '../utils/eventUtils';
 
 const EventList = ({ events }) => {
   if (!events.length) {
@@ -39,7 +40,7 @@ const EventList = ({ events }) => {
               <Grid item xs={12}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography variant="h6" component="h3">
-                    {event.title}
+                    {formatEventTitle(event)}
                   </Typography>
                   <Chip
                     label={`${event.cfu} CFU`}

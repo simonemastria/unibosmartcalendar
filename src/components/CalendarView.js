@@ -5,6 +5,7 @@ import { it } from 'date-fns/locale';
 import { Box, Paper, Dialog, DialogTitle, DialogContent } from '@mui/material';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import EventList from './EventList';
+import { formatEventTitle, createCalendarEvent } from '../utils/eventUtils';
 
 const locales = {
   'it': it
@@ -56,12 +57,8 @@ const CalendarView = ({ events }) => {
         end = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour later
       }
       
-      return {
-        title: `${event.title} - ${event.docente || 'No Instructor'}`,
-        start,
-        end,
-        resource: event,
-      };
+      // Use the utility function to create a calendar event with formatted title
+      return createCalendarEvent(event, start, end);
     });
   }, [events]);
 
@@ -125,7 +122,7 @@ const CalendarView = ({ events }) => {
           eventPropGetter={eventStyleGetter}
           formats={formats}
           popup
-          tooltipAccessor={event => `${event.resource.title} - ${event.resource.docente}`}
+          tooltipAccessor={event => `${event.title}`}
         />
       </Paper>
 
@@ -137,7 +134,9 @@ const CalendarView = ({ events }) => {
       >
         {selectedEvent && (
           <>
-            <DialogTitle>{selectedEvent.title}</DialogTitle>
+            <DialogTitle>
+              {formatEventTitle(selectedEvent)}
+            </DialogTitle>
             <DialogContent>
               <EventList events={[selectedEvent]} />
             </DialogContent>
