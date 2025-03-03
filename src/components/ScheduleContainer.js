@@ -7,8 +7,7 @@ import IosShareIcon from '@mui/icons-material/IosShare';
 import { downloadICSFile } from '../services/calendar';
 import CalendarView from './CalendarView';
 import CardList from './CardList';
-import CourseFilter from './CourseFilter';
-import YearFilter from './YearFilter';
+import ProgramFilter from './ProgramFilter';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -40,164 +39,45 @@ function a11yProps(index) {
 const ScheduleContainer = ({ events }) => {
   const [currentTab, setCurrentTab] = useState(0);
   const [exportAnchorEl, setExportAnchorEl] = useState(null);
-  const [selectedCourses, setSelectedCourses] = useState([]);
-  const [filterExpanded, setFilterExpanded] = useState(true);
+  const [programFilters, setProgramFilters] = useState({});
   
-  // Get available years based on program type and actual events
-  const availableYears = useMemo(() => {
-    console.log('Calculating available years from events:', events);
-    
-    if (!events || events.length === 0) {
-      console.log('No events available, returning default years [1]');
-      return [1];
-    }
-    
-    // Extract unique years that actually have events
-    const yearsWithEvents = new Set();
-    events.forEach(event => {
-      if (event.year) {
-        // Convert to number to ensure proper comparison
-        yearsWithEvents.add(Number(event.year));
-      }
-    });
-    
-    // Convert to sorted array
-    const years = Array.from(yearsWithEvents).sort((a, b) => a - b);
-    console.log('Years with events:', years);
-    
-    return years.length > 0 ? years : [1];
-  }, [events]);
-
-  // Initialize selectedYears with all available years
-  const [selectedYears, setSelectedYears] = useState([]);
-  
-  // Update selectedYears when availableYears changes
-  useEffect(() => {
-    console.log('Updating selectedYears with availableYears:', availableYears);
-    // Only update if selectedYears is empty or contains years not in availableYears
-    const needsUpdate = selectedYears.length === 0 || 
-                        !selectedYears.every(year => availableYears.includes(Number(year)));
-    
-    if (availableYears.length > 0 && needsUpdate) {
-      setSelectedYears(availableYears);
-    }
-  }, [availableYears, selectedYears]);
-
-  // Extract unique courses from events, filtered by selected years
-  const courses = useMemo(() => {
-    console.log('Filtering courses for years:', selectedYears);
-    const uniqueCourses = new Map();
-    
-    events.forEach(event => {
-      // Ensure year is a number for comparison
-      const eventYear = Number(event.year);
-      
-      console.log('Processing event:', {
-        title: event.title,
-        year: eventYear,
-        selectedYears,
-        isYearSelected: selectedYears.includes(eventYear)
-      });
-      
-      if (selectedYears.includes(eventYear)) {
-        const courseKey = `${event.title}_${eventYear}_${event.program}`;
-        if (!uniqueCourses.has(courseKey)) {
-          uniqueCourses.set(courseKey, {
-            title: event.title,
-            docente: event.docente,
-            cfu: event.cfu,
-            year: eventYear,
-            program: event.program
-          });
-        }
-      }
-    });
-    
-    const filteredCourses = Array.from(uniqueCourses.values());
-    console.log('Filtered courses:', filteredCourses);
-    return filteredCourses;
-  }, [events, selectedYears]);
-
-  // Initialize selected courses and handle year changes
-  useEffect(() => {
-    const coursesForSelectedYears = events
-      .filter(event => {
-        const eventYear = Number(event.year);
-        return selectedYears.includes(eventYear);
-      })
-      .reduce((acc, event) => {
-        const eventYear = Number(event.year);
-        const courseKey = `${event.title}_${eventYear}_${event.program}`;
-        if (!acc.includes(courseKey)) {
-          acc.push(courseKey);
-        }
-        return acc;
-      }, []);
-
-    if (selectedCourses.length === 0) {
-      // Initial load - select all courses
-      setSelectedCourses(coursesForSelectedYears);
-    } else {
-      // Year filter changed - keep only courses from selected years
-      const validCourses = selectedCourses.filter(courseKey => {
-        const parts = courseKey.split('_');
-        if (parts.length >= 2) {
-          const yearStr = parts[1];
-          const year = Number(yearStr);
-          return selectedYears.includes(year);
-        }
-        return false;
-      });
-      setSelectedCourses(validCourses);
-    }
-  }, [selectedYears, events, selectedCourses]);
+  // This space intentionally left empty - we've moved to program-based filtering
 
   const handleTabChange = (event, newValue) => {
     setCurrentTab(newValue);
   };
 
-  const handleCourseToggle = (newSelection) => {
-    setSelectedCourses(newSelection);
+  const handleProgramFilterChange = (newFilters) => {
+    setProgramFilters(newFilters);
   };
 
   const filteredEvents = useMemo(() => {
     console.log('All events:', events);
-    console.log('Selected courses:', selectedCourses);
-    console.log('Selected years:', selectedYears);
+    console.log('Program filters:', programFilters);
     
-    // Debug the course keys to make sure they match
-    if (events.length > 0 && selectedCourses.length > 0) {
-      const sampleEvent = events[0];
-      const sampleEventYear = Number(sampleEvent.year);
-      const sampleCourseKey = `${sampleEvent.title}_${sampleEventYear}_${sampleEvent.program}`;
-      
-      console.log('Sample event course key:', {
-        event: sampleEvent,
-        constructedKey: sampleCourseKey,
-        isSelected: selectedCourses.includes(sampleCourseKey),
-        yearSelected: selectedYears.includes(sampleEventYear)
-      });
-      
-      // Check if any course keys match
-      const matchingCourses = selectedCourses.filter(courseKey => 
-        events.some(event => {
-          const eventYear = Number(event.year);
-          const eventKey = `${event.title}_${eventYear}_${event.program}`;
-          return courseKey === eventKey;
-        })
-      );
-      
-      console.log('Matching course keys:', matchingCourses);
+    if (!programFilters || Object.keys(programFilters).length === 0) {
+      console.log('No program filters set, showing all events');
+      return events.map(event => ({
+        ...event,
+        title: `[${event.program}] ${event.title}`
+      }));
     }
     
     const filtered = events.filter(event => {
+      // Skip events without program information
+      if (!event.program) return false;
+      
+      // Get the filters for this program
+      const programFilter = programFilters[event.program];
+      if (!programFilter) return false;
+      
       // Ensure year is a number for comparison
       const eventYear = Number(event.year);
       const courseKey = `${event.title}_${eventYear}_${event.program}`;
       
-      // Check if both course and year are selected
-      const isCourseSelected = selectedCourses.includes(courseKey);
-      const isYearSelected = selectedYears.includes(eventYear);
+      // Check if both course and year are selected for this program
+      const isCourseSelected = programFilter.selectedCourses.includes(courseKey);
+      const isYearSelected = programFilter.selectedYears.includes(eventYear);
       
       const isIncluded = isCourseSelected && isYearSelected;
       
@@ -219,17 +99,16 @@ const ScheduleContainer = ({ events }) => {
     
     console.log('Filtered events:', filtered);
     
-    // If no events are filtered but we have courses selected, this is likely a bug
-    if (filtered.length === 0 && selectedCourses.length > 0) {
-      console.warn('No events passed filtering despite having selected courses!', {
-        selectedCourses,
-        selectedYears,
+    // If no events are filtered but we have programs with courses selected, this is likely a bug
+    if (filtered.length === 0 && Object.keys(programFilters).length > 0) {
+      console.warn('No events passed filtering despite having program filters!', {
+        programFilters,
         totalEvents: events.length
       });
     }
     
     return filtered;
-  }, [events, selectedCourses, selectedYears]);
+  }, [events, programFilters]);
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -320,17 +199,10 @@ const ScheduleContainer = ({ events }) => {
       </Box>
 
       <Stack spacing={2}>
-        <YearFilter
-          selectedYears={selectedYears}
-          onYearChange={setSelectedYears}
-          availableYears={availableYears}
-        />
-        <CourseFilter
-          courses={courses}
-          selectedCourses={selectedCourses}
-          onCourseToggle={handleCourseToggle}
-          expanded={filterExpanded}
-          onExpandToggle={() => setFilterExpanded(!filterExpanded)}
+        <ProgramFilter
+          events={events}
+          selectedPrograms={programFilters}
+          onProgramFilterChange={handleProgramFilterChange}
         />
       </Stack>
 
