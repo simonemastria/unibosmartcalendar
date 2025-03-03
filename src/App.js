@@ -13,7 +13,7 @@ import {
   Button,
   GlobalStyles
 } from '@mui/material';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Outlet } from 'react-router-dom';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ScheduleContainer from './components/ScheduleContainer';
@@ -48,11 +48,11 @@ const theme = createTheme({
   },
 });
 
-function MainContent() {
+// Calendar page component
+function CalendarPage() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const location = useLocation();
 
   useEffect(() => {
     const loadSchedule = async () => {
@@ -103,6 +103,29 @@ function MainContent() {
     loadSchedule();
   }, []);
 
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Typography color="error" align="center">
+        {error}
+      </Typography>
+    );
+  }
+
+  return <ScheduleContainer events={events} />;
+}
+
+// App layout with navigation
+function AppLayout() {
+  const location = useLocation();
+  
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <AppBar position="static" color="primary" elevation={0}>
@@ -125,8 +148,7 @@ function MainContent() {
           {location.pathname === '/' ? (
             <IconButton
               color="inherit"
-              component={Link}
-              to="/settings"
+              onClick={() => window.location.href = '/settings'}
               aria-label="settings"
             >
               <SettingsIcon />
@@ -144,21 +166,7 @@ function MainContent() {
       </AppBar>
 
       <Container maxWidth="lg" sx={{ py: 4, flex: 1 }}>
-        {location.pathname === '/' ? (
-          loading ? (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
-              <CircularProgress />
-            </Box>
-          ) : error ? (
-            <Typography color="error" align="center">
-              {error}
-            </Typography>
-          ) : (
-            <ScheduleContainer events={events} />
-          )
-        ) : (
-          <Settings />
-        )}
+        <Outlet />
       </Container>
     </Box>
   );
@@ -197,7 +205,10 @@ function App() {
           }}
         />
         <Routes>
-          <Route path="/*" element={<MainContent />} />
+          <Route path="/" element={<AppLayout />}>
+            <Route index element={<CalendarPage />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
         </Routes>
       </ThemeProvider>
     </Router>

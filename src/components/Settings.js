@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createJsonUrl } from '../services/curricula';
 import {
   Box,
@@ -24,13 +24,16 @@ const Settings = () => {
   const [pendingUrl, setPendingUrl] = useState(null);
   const [pendingProgramInfo, setPendingProgramInfo] = useState(null);
   const [success, setSuccess] = useState('');
-  const [timetableUrls, setTimetableUrls] = useState(() => {
+  const [timetableUrls, setTimetableUrls] = useState([]);
+
+  // Load timetable URLs from localStorage when component mounts
+  useEffect(() => {
     const saved = localStorage.getItem('timetableUrls');
-    if (!saved) return [];
+    if (!saved) return;
     
     // Migrate existing data to include fullProgramName if missing
     const parsedData = JSON.parse(saved);
-    return parsedData.map(timetable => {
+    setTimetableUrls(parsedData.map(timetable => {
       if (timetable.fullProgramName) return timetable;
       
       // Extract program name from the timetable name
@@ -39,16 +42,21 @@ const Settings = () => {
         ...timetable,
         fullProgramName: nameParts[0]
       };
-    });
-  });
+    }));
+  }, []);
   
   // Add state for editing program years and names
   const [editingProgramYears, setEditingProgramYears] = useState(null);
   const [editingProgramName, setEditingProgramName] = useState('');
-  const [programYears, setProgramYears] = useState(() => {
+  const [programYears, setProgramYears] = useState({});
+
+  // Load program years from localStorage when component mounts
+  useEffect(() => {
     const saved = localStorage.getItem('programYears');
-    return saved ? JSON.parse(saved) : {};
-  });
+    if (saved) {
+      setProgramYears(JSON.parse(saved));
+    }
+  }, []);
 
   const normalizeUrl = (url) => {
     try {
